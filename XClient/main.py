@@ -4,10 +4,8 @@ import socket
 import logging
 from multiprocessing import Queue
 import ssl
-import time
 import sys
 import argparse
-import random
 import time
 from typing import Tuple
 
@@ -30,7 +28,7 @@ def parse_input_argument():
 
 
 def read_n_byte_from_tcp_sock(sock, n):
-    """Just for read n byte  from tcp socket"""
+    '''Just for read n byte  from tcp socket'''
     buff = bytearray(n)
     pos = 0
     while pos < n:
@@ -99,7 +97,12 @@ def handle_udp_conn_recv(udp_socket: socket.socket, tcp_server_addr: Tuple[str, 
             data, incom_udp_addr = udp_socket.recvfrom(65535)
             if incom_udp_addr not in udp_conn_list:
                 logging.info("New UDP connection from {}".format(incom_udp_addr))
-                stcp_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+
+                tcp_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+                context = ssl.create_default_context()
+                context.load_verify_locations('XClient/rootCA.pem')
+                stcp_socket = context.wrap_socket(tcp_socket, server_hostname='pouyaesmaili.ir')
+
                 stcp_socket.connect(tcp_server_addr)
                 udp_to_tcp_queue = Queue(maxsize=16384)
                 udp_conn_list[incom_udp_addr] = (stcp_socket, udp_to_tcp_queue)
@@ -132,6 +135,7 @@ def main():
     log_format = "%(asctime)s: (%(levelname)s) %(message)s"
     logging.basicConfig(format=log_format, level=log_level, datefmt="%H:%M:%S")
 
+    done = Queue()
     for tun_addr in args.udp_tunnel:
         tun_addr_split = tun_addr.split(':')
         udp_listening_ip = tun_addr_split[0]

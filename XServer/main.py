@@ -23,7 +23,7 @@ def parse_input_argument():
 
 
 def read_n_byte_from_tcp_sock(sock, n):
-    """Just for read n byte  from tcp socket"""
+    '''Just for read n byte  from tcp socket'''
     buff = bytearray(n)
     pos = 0
     while pos < n:
@@ -88,18 +88,21 @@ def main():
     logging.basicConfig(format=log_format, level=log_level, datefmt="%H:%M:%S")
 
     # Create a TCP socket
+    context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    context.load_cert_chain(certfile='XServer/rootCA.pem', keyfile='XServer/rootCA.key')
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp_socket:
         tcp_socket.bind((tcp_server_listen_ip, tcp_server_listen_port))
         tcp_socket.listen()
-        while True:
-            logging.info("Waiting for a TCP connection...")
-            stcp_socket, addr = tcp_socket.accept()
-            logging.info("Received a TCP connection from {}".format(addr))
-            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            udp_socket.bind(('', 0))
-            logging.info("UDP socket binded to {}".format(udp_socket.getsockname()))
-            threading.Thread(target=handle_tcp_conn_recv, args=(stcp_socket, udp_socket)).start()
-            threading.Thread(target=handle_tcp_conn_send, args=(stcp_socket, udp_socket)).start()
+        with context.wrap_socket(tcp_socket, server_side=True) as stcp_socket:
+            while True:
+                logging.info("Waiting for a TCP connection...")
+                conn, addr = stcp_socket.accept()
+                logging.info("Received a TCP connection from {}".format(addr))
+                udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                udp_socket.bind(('', 0))
+                logging.info("UDP socket binded to {}".format(udp_socket.getsockname()))
+                threading.Thread(target=handle_tcp_conn_recv, args=(conn, udp_socket)).start()
+                threading.Thread(target=handle_tcp_conn_send, args=(conn, udp_socket)).start()
 
 
 if __name__ == '__main__':

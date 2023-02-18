@@ -14,7 +14,8 @@ def parse_input_argument():
                                                   to the server over various TCP connections.')
 
     parser.add_argument('-s', '--server', required=True,
-                        help="The IP address and (TCP) port number of the tunnel server.")
+                        help='The IP address and (TCP) port number of the tunnel server.\
+                              A tcp socket will be openned on this port')
     parser.add_argument('-v', '--verbosity', choices=['error', 'info', 'debug'], default='info',
                         help="Determine the verbosity of the messages. The default value is 'info'.")
 
@@ -77,7 +78,7 @@ def main():
     tcp_server_listen_ip = args.server.split(':')[0]
     tcp_server_listen_port = int(args.server.split(':')[1])
 
-    log_level = logging.CRITICAL
+    log_level = logging.INFO
     if args.verbosity == 'error':
         log_level = logging.ERROR
     elif args.verbosity == 'info':

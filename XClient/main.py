@@ -28,7 +28,7 @@ def parse_input_argument():
 
 
 def read_n_byte_from_tcp_sock(sock, n):
-    '''Just for read n byte  from tcp socket'''
+    """Just for read n byte  from tcp socket"""
     buff = bytearray(n)
     pos = 0
     while pos < n:
@@ -56,12 +56,14 @@ def handle_tcp_conn_recv(stcp_socket: socket.socket, udp_socket: socket.socket, 
 
 def handle_tcp_conn_send(stcp_socket: socket.socket, rmt_udp_addr: Tuple[str, int], udp_to_tcp_queue: queue.Queue):
     """
-     get remote UDP ip and port(rmt_udp_addr) and Concat them then sending it to the TCP socket
+    Get remote UDP ip and port(rmt_udp_addr) and Concat them then sending it to the TCP socket
     after that read from udp_to_tcp_queue for sendeig a UDP segment and update queue,
     don't forgot to block the queue when you are reading from it.
     """
     try:
         rmt_udp_ip = socket.inet_aton(rmt_udp_addr[0])
+        # Send ip and port of the udp destination at first.
+        # Every packet on this connection will be forwarded to this destination.
         stcp_socket.sendall(rmt_udp_ip)
         stcp_socket.sendall(rmt_udp_addr[1].to_bytes(2, byteorder='big'))
         logging.info("Sent remote UDP address to the TCP socket: {}".format(rmt_udp_addr))
@@ -71,6 +73,7 @@ def handle_tcp_conn_send(stcp_socket: socket.socket, rmt_udp_addr: Tuple[str, in
     while True:
         try:
             data = udp_to_tcp_queue.get(block=True, timeout=1)
+            # Send data len as the first 4 bytes of every packet to handle different packet sizes.
             stcp_socket.sendall(len(data).to_bytes(4, byteorder='big'))
             stcp_socket.sendall(data)
             logging.debug("Sent UDP segment to the TCP socket: {}".format(rmt_udp_addr))
@@ -83,7 +86,6 @@ def handle_tcp_conn_send(stcp_socket: socket.socket, rmt_udp_addr: Tuple[str, in
 
 def handle_udp_conn_recv(udp_socket: socket.socket, tcp_server_addr: Tuple[str, int], rmt_udp_addr: Tuple[str, int]):
     """
-        This function should be in while True,
         Receive a UDP packet form incom_udp_addr.
         It also keeps the associated thread for handling tcp connections in udp_conn_list,
         if incom_udp_addr not in udp_conn_list, Recognize a new UDP connection from incom_udp_addr. So establish a TCP connection to the remote server for it
@@ -125,7 +127,7 @@ def main():
     tcp_server_port = int(args.server.split(':')[1])
     tcp_server_addr = (tcp_server_ip, tcp_server_port)
 
-    log_level = logging.CRITICAL
+    log_level = logging.INFO
     if args.verbosity == 'error':
         log_level = logging.ERROR
     elif args.verbosity == 'info':
